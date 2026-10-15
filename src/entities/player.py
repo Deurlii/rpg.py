@@ -6,45 +6,44 @@ class Player:
     RADIUS = 10
     SPEED = 5
     ROTATION_SPEED = 0.07
-    def __init__(self, tilemap):
-        self.tilemap = tilemap
-        self.x, self.y = tilemap.spawn
-        self.angle = 0
+
+    def __init__(self, x, y, angle=0):
+        self.x = x
+        self.y = y
+        self.angle = angle
         self.keybindings = Config().key_bindings
         self.sprite = pygame.image.load("src/graphics/assets/sprites/player.png").convert_alpha()
+        self.last_tile = None
 
-    def update(self, input_state):
+    def update(self, input_state, tilemap):
         keys = input_state["keys"]
-
         if self._is_action_pressed("rotate_left", keys):
             self.angle -= self.ROTATION_SPEED
         if self._is_action_pressed("rotate_right", keys):
             self.angle += self.ROTATION_SPEED
-
         if self._is_action_pressed("move_forward", keys):
-            self._try_move(self.SPEED)
+            self._try_move(tilemap, self.SPEED)
         if self._is_action_pressed("move_backward", keys):
-            self._try_move(-self.SPEED)
+            self._try_move(tilemap, -self.SPEED)
 
-    def _circle_free(self, nx, ny):
-        if not self.tilemap.is_passable(nx, ny):
+    def _circle_free(self, tilemap, nx, ny):
+        if not tilemap.is_passable(nx, ny):
             return False
         r = self.RADIUS
         for i in range(8):
             a = i * math.pi / 4
-            if not self.tilemap.is_passable(nx + r * math.cos(a), ny + r * math.sin(a)):
+            if not tilemap.is_passable(nx + r * math.cos(a), ny + r * math.sin(a)):
                 return False
         return True
 
-    def _try_move(self, distance):
+    def _try_move(self, tilemap, distance):
         nx = self.x + distance * math.cos(self.angle)
         ny = self.y + distance * math.sin(self.angle)
-
-        if self._circle_free(nx, ny):
+        if self._circle_free(tilemap, nx, ny):
             self.x, self.y = nx, ny
-        elif self._circle_free(nx, self.y):
+        elif self._circle_free(tilemap, nx, self.y):
             self.x = nx
-        elif self._circle_free(self.x, ny):
+        elif self._circle_free(tilemap, self.x, ny):
             self.y = ny
 
     def _is_action_pressed(self, action, keys):
@@ -58,7 +57,6 @@ class Player:
         scale_y = screen.get_height() / renderer.buffer_height
         screen_x = screen.get_width() // 2
         screen_y = int(buffer_y * scale_y)
-
         px_per_world = screen.get_width() / (camera.distance * renderer.fov)
         target_world_width = 24
         sprite = pygame.transform.scale(
